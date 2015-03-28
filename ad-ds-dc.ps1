@@ -31,6 +31,7 @@ Configuration DSC1 {
             DefaultGateway = $Node.DefaultGateway
             SubnetMask = $Node.SubnetMask
             AddressFamily = $Node.AddressFamily
+            Users = Import-Csv C:\users.csv
         }
         xDNSServerAddress SetDNS {
             Address = $Node.DNSAddress
@@ -47,7 +48,40 @@ Configuration DSC1 {
             SafemodeAdministratorPassword = $safemodeCred
             DependsOn = '[xIPAddress]SetIP', '[WindowsFeature]ADDSInstall'
         }
-    }
+
+        xADUser AddingUsers {
+            Ensure = 'Present'
+            DomainName = 'contoso.com'
+            DomainAdministratorCredential = $domainCred
+            UserName = 
+            DependsOn = '[WindowsFeature]ADDSInstall' ,'[xADDomain]FirstDC'
+
+        }
+    
+        WindowsFeature DHCPInstall {
+            Ensure = 'Present'
+            Name = 'Dhcp'
+        }
+        xDhcpServerScope CreateScope 
+        { 
+             Ensure = 'Present' 
+             IPEndRange = '192.168.29.250' 
+             IPStartRange = '192.168.29.5' 
+             Name = 'PowerShellScope' 
+             SubnetMask = '255.255.255.0' 
+             LeaseDuration = '00:08:00' 
+             State = 'Active' 
+             AddressFamily = 'IPv4' 
+        } 
+        xDhcpServerOption Option
+        {
+            Ensure = 'Present'
+            ScopeID = '192.168.29.0' 
+            DnsDomain = 'contoso.com' 
+            DnsServerIPAddress = '192.168.29.254','8.8.8.8' 
+            AddressFamily = 'IPv4' 
+        }
+        }
 }
 
 DSC1 -OutputPath c:\DSC\Roles\Config –ConfigurationData $ConfigData -Credential (Get-Credential)
